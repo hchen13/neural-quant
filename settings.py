@@ -1,7 +1,5 @@
-import os
 from pathlib import Path
 
-from QUANTAXIS.QAUtil import QASETTING
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,8 +12,8 @@ MA_COLORS           = ['white', 'yellow', 'magenta', 'lightgreen', 'lightgray', 
 MARKET_OPEN_TIME    = '09:30:00'
 MARKET_CLOSE_TIME   = "15:00:00"
 
-TUSHARE_TOKEN       = os.getenv('TOKEN')
-QASETTING.set_config('TSPRO', 'token', TUSHARE_TOKEN)
+# TUSHARE_TOKEN       = os.getenv('TOKEN')
+# QASETTING.set_config('TSPRO', 'token', TUSHARE_TOKEN)
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 

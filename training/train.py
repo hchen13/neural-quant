@@ -3,10 +3,8 @@ from datetime import datetime
 from pathlib import Path
 
 import tensorflow as tf
-from tensorflow.python.data import AUTOTUNE
+from tensorflow.python.data.ops.dataset_ops import AUTOTUNE
 from tqdm import tqdm
-
-from training.metrics import MultiClassEvaluator
 
 _project_root = Path().cwd().parent
 sys.path.append(str(_project_root))
@@ -15,6 +13,7 @@ from dataset_management.tools import load_dataset
 from training.tensorboard_monitor import Monitor
 from prototype.fcn import build_fcn
 from training.loss_functions import weighted_categorical_crossentropy
+from training.metrics import MultiClassEvaluator
 import configs
 import settings
 

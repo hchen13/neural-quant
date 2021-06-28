@@ -1,7 +1,8 @@
-*.pyc
-.DS_Store
 .idea/
 .ipynb_checkpoints/
 __pycache__/
 logs/
 outputs/
+*.pyc
+.DS_Store
+*.sh
