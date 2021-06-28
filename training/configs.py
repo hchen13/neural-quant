@@ -6,7 +6,7 @@ _gpu_machine = True if os.getenv('AIBOX') else False
 if _gpu_machine:
     EPOCHS = 100
     BATCH_SIZE = 64
-    DATASET_ROOT = Path('/media/ethan/DataStorage/quant')
+    DATASET_ROOT = Path('/media/ethan/DataStorage/quant/') / 'btc_2019_2020'
 else:
     EPOCHS = 10
     BATCH_SIZE = 16
