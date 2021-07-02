@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from dataset_management.tfannotation import read_tfrecord, create_tfrecord
 from utilities.funcs import create_file_name
-from utilities.visualizations import mpf_draw_trading_data
+from utilities.visualizations import draw_trading_data
 
 
 def normalize_ohlcv(data, history_size):
@@ -24,7 +24,7 @@ def normalize_ohlcv(data, history_size):
     return data
 
 
-def segment_trading_data(data: pd.DataFrame, n: int=144, t: int=6, norm=False):
+def segment_trading_data(data: pd.DataFrame, n: int=144, t: int=6, norm=False, shuffle=True):
     """ Slide the given trading data and generate segments
         data:   the trading data formatted as QUANTAXIS DataStruct
         n:      history window size, default to 144 (12 hours of 5min data)
@@ -33,7 +33,11 @@ def segment_trading_data(data: pd.DataFrame, n: int=144, t: int=6, norm=False):
         :return : generator of (history, future) pair
     """
     window_size = n + t
-    for i in range(0, len(data) - window_size + 1):
+    indices = np.arange(0, len(data) - window_size + 1)
+    if shuffle:
+        np.random.shuffle(indices)
+
+    for i in indices:
         segment = data.iloc[i : i + window_size].copy()
         if norm:
             # anchor_price = segment['close'].iloc[0]
@@ -68,11 +72,11 @@ def compute_label(history: pd.DataFrame, future: pd.DataFrame, k_up=1., k_lo=Non
     return 0
 
 
-def construct_training_data(data: pd.DataFrame, n: int=144, t: int=6, k_up=1., k_lo=None, norm=False, columns=None):
+def construct_training_data(data: pd.DataFrame, n: int=144, t: int=6, k_up=1., k_lo=None, norm=False, columns=None, shuffle=True):
     if columns is None:
         columns = ['open', 'high', 'low', 'close', 'volume']
     columns = list(columns)
-    segments = segment_trading_data(data=data, n=n, t=t, norm=norm)
+    segments = segment_trading_data(data=data, n=n, t=t, norm=norm, shuffle=shuffle)
     for history, future in segments:
         y = compute_label(history, future, k_up=k_up, k_lo=k_lo)
         hist = history[columns].values
@@ -80,28 +84,54 @@ def construct_training_data(data: pd.DataFrame, n: int=144, t: int=6, k_up=1., k
         yield hist.astype('float32'), y, fut.astype('float32')
 
 
-def save_dataset_as_tfrecords(dataset, dataset_dir, split_ratio=.1, dataset_length=None, verbose=True):
+def save_dataset_as_tfrecords(dataset, dataset_dir, split_ratio=.1, dataset_length=None, verbose=True, buffer_size=1):
+    """ Save the dataset generator into tfrecord files
+
+    :param dataset: generator
+    :param dataset_dir: root directory of the dataset to be saved
+    :param split_ratio: the ratio of validation size to the total size
+    :param dataset_length: optional, specified only to display the progress
+    :param verbose: whether to display progress bar
+    :param buffer_size: the number of samples to be saved into a single tfrecord file
+    """
     train_dir = Path(str(dataset_dir)) / 'train'
     valid_dir = Path(str(dataset_dir)) / 'valid'
     train_dir.mkdir(parents=True, exist_ok=True)
     valid_dir.mkdir(parents=True, exist_ok=True)
 
+    train_count = 0
+    valid_count = 0
+    train_writer = tf.io.TFRecordWriter(str(train_dir / f"{create_file_name()}.tfrecords"))
+    valid_writer = tf.io.TFRecordWriter(str(valid_dir / f"{create_file_name()}.tfrecords"))
     for i, (history, y, future) in tqdm(enumerate(dataset), total=dataset_length, disable=not verbose):
-        file_name = f"{create_file_name()}.tfrecords"
-        if i % (1 / split_ratio) < 1:
-            file_path = valid_dir / file_name
-        else:
+        if train_count == buffer_size:
+            train_writer.close()
+            file_name = f"{create_file_name()}.tfrecords"
             file_path = train_dir / file_name
+            train_writer = tf.io.TFRecordWriter(str(file_path))
+            train_count = 0
+        if valid_count == buffer_size:
+            valid_writer.close()
+            file_name = f"{create_file_name()}.tfrecords"
+            file_path = valid_dir / file_name
+            valid_writer = tf.io.TFRecordWriter(str(file_path))
+            valid_count = 0
+        serialized = create_tfrecord(history=history, label=y, future=future)
+        if i % (1 / split_ratio) < 1:
+            valid_writer.write(serialized)
+            valid_count += 1
+        else:
+            train_writer.write(serialized)
+            train_count += 1
 
-        with tf.io.TFRecordWriter(str(file_path)) as writer:
-            serialized = create_tfrecord(history=history, label=y, future=future)
-            writer.write(serialized)
+    train_writer.close()
+    valid_writer.close()
 
 
 def load_dataset(directory):
     directory = Path(str(directory))
     data_files = [str(p) for p in directory.rglob('*.tfrecords')]
-    print(f"[INFO] {len(data_files)} files founded.", flush=True)
+    print(f"[INFO] {len(data_files)} files found.", flush=True)
     shuffle(data_files)
 
     raw = tf.data.TFRecordDataset(data_files)
@@ -131,14 +161,25 @@ def display_batch(batch_data):
     display_training_data(history, label, future)
 
 
-def display_training_data(history, label, future):
+def display_training_data(history, label, future, k_up=1., k_lo=None):
     N, T = len(history), len(future)
     history_df = pd.DataFrame(history, columns=['open', 'high', 'low', 'close', 'volume'])
     future_df = pd.DataFrame(future, columns=['open', 'high', 'low', 'close', 'volume'])
     df = pd.concat([history_df, future_df])
     df.index = list(map(datetime.fromtimestamp, range(N + T)))
     df.index.name = 'datetime'
-    fig, axes = mpf_draw_trading_data(df, title=f"Restored data visualization, label = {label}",
-                                      figsize=(12, 6))
+    fig, axes = draw_trading_data(df, title=f"Restored data visualization, label = {label}",
+                                  figsize=(12, 6))
+
+    # 画TBM线
+    if k_lo is None:
+        k_lo = k_up
+    volatility = history_df['close'].std(ddof=0)
+    top = history_df['close'].iloc[-1] + volatility * k_up
+    bot = history_df['close'].iloc[-1] - volatility * k_lo
+
     axes[0].axvline(x=N - .5, alpha=.4, c='white', ls='--')
+    axes[0].axhline(y=top, c='g', ls='--', linewidth=1.5)
+    axes[0].axhline(y=bot, c='r', ls='--', linewidth=1.5)
+
     plt.show()

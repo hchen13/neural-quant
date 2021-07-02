@@ -66,7 +66,7 @@ def mpf_draw_ATR(chunk, axis):
     return [atr_line]
 
 
-def mpf_draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8)):
+def draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8)):
     chunk = data.copy()
     date_col = get_datetime_name(chunk)
     chunk.reset_index(inplace=True)
@@ -155,7 +155,7 @@ def mpf_draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12,
         title = f"{d0} - {dt}"
 
     fig.suptitle(title, color='w')
-    mpf.plot(chunk, type='candle', addplot=subplots, style='yahoo', ax=main_ax, volume=vol_ax)
+    mpf.plot(chunk, type='candle', addplot=subplots, style='binance', ax=main_ax, volume=vol_ax)
 
     if tunnel_ub is not None:
         main_ax.fill_between(x=np.arange(len(tunnel_ub)), y1=tunnel_ub, y2=tunnel_lb, color='goldenrod', alpha=.1)
@@ -165,7 +165,7 @@ def mpf_draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12,
 
 
 def display_trading_data(data: pd.DataFrame, seps=None, title=None, figsize=(12, 8)):
-    fig, axes = mpf_draw_trading_data(data, seps, title, figsize)
+    fig, axes = draw_trading_data(data, seps, title, figsize)
     plt.draw()
     plt.waitforbuttonpress()
     plt.close()
