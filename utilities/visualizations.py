@@ -66,7 +66,7 @@ def mpf_draw_ATR(chunk, axis):
     return [atr_line]
 
 
-def draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8)):
+def draw_trading_data(data:pd.DataFrame, pointers=None, title=None, figsize=(12, 8)):
     chunk = data.copy()
     date_col = get_datetime_name(chunk)
     chunk.reset_index(inplace=True)
@@ -128,18 +128,18 @@ def draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8))
         aps = globals()[func_name](chunk, axes[i + 2])
         subplots += aps
 
-    # seps
-    if seps is None:
-        seps = []
-    assert isinstance(seps, list)
+    # pointers
+    if pointers is None:
+        pointers = []
+    assert isinstance(pointers, list)
     signals = []
     last = None
     for i in chunk.index:
         found = False
-        for sep in seps:
-            if isinstance(sep, str):
-                sep = datetime.strptime(sep, "%Y-%m-%d %H:%M:%S")
-            if i > sep and last <= sep:
+        for pt in pointers:
+            if isinstance(pt, str):
+                pt = datetime.strptime(pt, "%Y-%m-%d %H:%M:%S")
+            if i > pt and last <= pt:
                 signals.append(chunk.loc[last]['low'])
                 found = True
                 break
@@ -155,7 +155,7 @@ def draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8))
         title = f"{d0} - {dt}"
 
     fig.suptitle(title, color='w')
-    mpf.plot(chunk, type='candle', addplot=subplots, style='binance', ax=main_ax, volume=vol_ax)
+    mpf.plot(chunk, type='candle', addplot=subplots, style='yahoo', ax=main_ax, volume=vol_ax)
 
     if tunnel_ub is not None:
         main_ax.fill_between(x=np.arange(len(tunnel_ub)), y1=tunnel_ub, y2=tunnel_lb, color='goldenrod', alpha=.1)
@@ -164,8 +164,8 @@ def draw_trading_data(data:pd.DataFrame, seps=None, title=None, figsize=(12, 8))
     return fig, axes
 
 
-def display_trading_data(data: pd.DataFrame, seps=None, title=None, figsize=(12, 8)):
-    fig, axes = draw_trading_data(data, seps, title, figsize)
+def display_trading_data(data: pd.DataFrame, pointers=None, title=None, figsize=(12, 8)):
+    fig, axes = draw_trading_data(data, pointers, title, figsize)
     plt.draw()
     plt.waitforbuttonpress()
     plt.close()

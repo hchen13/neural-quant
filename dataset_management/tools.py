@@ -1,15 +1,17 @@
+import json
 from datetime import datetime
 from pathlib import Path
 from random import shuffle
 
 import numpy as np
 import pandas as pd
+import requests
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from dataset_management.tfannotation import read_tfrecord, create_tfrecord
-from utilities.funcs import create_file_name
+from utilities.funcs import create_file_name, indicator_ATR
 from utilities.visualizations import draw_trading_data
 
 
@@ -53,14 +55,17 @@ def segment_trading_data(data: pd.DataFrame, n: int=144, t: int=6, norm=False, s
         yield history, future
 
 
-def compute_label(history: pd.DataFrame, future: pd.DataFrame, k_up=1., k_lo=None):
+def compute_label(history: pd.DataFrame, future: pd.DataFrame, k_up=1., k_lo=None, delta_type='volatility'):
     if k_lo is None:
         k_lo = k_up
-    volatility = history['close'].std(ddof=0)
     last_bar = history.iloc[-1]
     last_price = last_bar['close']
-    upper = k_up * volatility + last_price
-    lower = -k_lo * volatility + last_price
+    volatility = history['close'].std(ddof=0)
+    df = indicator_ATR(history, n=len(history) // 2)
+    ATR = df.iloc[-1].ATR
+    delta = volatility if delta_type == 'volatility' else ATR
+    upper = k_up * delta + last_price
+    lower = -k_lo * delta + last_price
     above, = np.nonzero((future['close'] > upper).values)
     below, = np.nonzero((future['close'] < lower).values)
     first_above = above[0] if len(above) else len(future) + 1
@@ -72,13 +77,13 @@ def compute_label(history: pd.DataFrame, future: pd.DataFrame, k_up=1., k_lo=Non
     return 0
 
 
-def construct_training_data(data: pd.DataFrame, n: int=144, t: int=6, k_up=1., k_lo=None, norm=False, columns=None, shuffle=True):
+def construct_training_data(data: pd.DataFrame, n: int=144, t: int=6, k_up=1., k_lo=None, delta_type='volatility', norm=False, columns=None, shuffle=True):
     if columns is None:
         columns = ['open', 'high', 'low', 'close', 'volume']
     columns = list(columns)
     segments = segment_trading_data(data=data, n=n, t=t, norm=norm, shuffle=shuffle)
     for history, future in segments:
-        y = compute_label(history, future, k_up=k_up, k_lo=k_lo)
+        y = compute_label(history, future, k_up=k_up, k_lo=k_lo, delta_type=delta_type)
         hist = history[columns].values
         fut = future[columns].values
         yield hist.astype('float32'), y, fut.astype('float32')
@@ -183,3 +188,29 @@ def display_training_data(history, label, future, k_up=1., k_lo=None):
     axes[0].axhline(y=bot, c='r', ls='--', linewidth=1.5)
 
     plt.show()
+
+
+def fetch_market_caps(sort=True):
+    api_url = "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
+    resp = requests.get(api_url, proxies={'https': '127.0.0.1:1087'})
+    content = json.loads(resp.content)
+    data = content['data']
+    pairs = []
+    for d in data:
+        if d['q'] != 'USDT':
+            continue
+        if d['st'] != 'TRADING' or not d['cs'] or not d['c']:
+            continue
+        symbol = d['s']
+        circulating_supply = float(d['cs'])
+        price = float(d['c'])
+        pairs.append({
+            "symbol": symbol,
+            "market_cap": circulating_supply * price,
+            "circulating_supply": circulating_supply,
+            "price": price,
+            "vol24h": float(d['qv']),
+        })
+    if sort:
+        pairs.sort(key=lambda i: i['market_cap'], reverse=True)
+    return pairs
