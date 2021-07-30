@@ -43,5 +43,5 @@ def main():
 
 if __name__ == '__main__':
     # main()
-    # compare_reports(pattern='BINANCE*.csv', commission_rate=1e-3, tax_rate=0)
-    inspect_report(file_name='BINANCE.ETHUSDT60min.csv', commission_rate=1e-3, tax_rate=0)
+    compare_reports(pattern='atr*.csv', commission_rate=1e-3, tax_rate=0)
+    # inspect_report(pattern='atr*eth*.csv', commission_rate=1e-3, tax_rate=0, display=True)

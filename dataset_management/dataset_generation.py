@@ -7,22 +7,22 @@ _project_root = Path().cwd().parent
 sys.path.append(str(_project_root))
 
 from dataset_management.tools import construct_training_data, load_dataset, visualize_label_distribution, \
-    save_dataset_as_tfrecords, fetch_market_caps
+    save_dataset_as_tfrecords, fetch_market_caps, display_batch, display_training_data
 
 if __name__ == '__main__':
     freq = '60min'
     start_date = "2017-01-01"
     end_date = "2020-12-31"
 
-    dataset_dir = Path().home() / 'datasets' / 'quant' / f'crypto{freq}_ATR'
+    dataset_dir = Path().home() / 'datasets' / 'quant' / f'crypto{freq}_std'
     split_ratio = .05
 
     params = dict(
         n=144,
-        t=6,
+        t=12,
         k_up=1.,
         norm=True,
-        delta_type='ATR'
+        delta_type='volatility'
     )
 
     top_n = 20
@@ -40,6 +40,12 @@ if __name__ == '__main__':
             split_ratio=split_ratio,
             dataset_length=dataset_length,
             buffer_size=1024)
+
+    trainset = load_dataset(dataset_dir / 'train')
+    validset = load_dataset(dataset_dir / 'valid')
+
+    visualize_label_distribution(trainset)
+    visualize_label_distribution(validset)
     """
 300708it [01:51, 2700.50it/s]
 label -1: 50,253
@@ -76,13 +82,6 @@ label 1: 2,901
     #         split_ratio=split_ratio,
     #         dataset_length=dataset_length,
     #         verbose=False, buffer_size=1024)
-
-    trainset = load_dataset(dataset_dir / 'train')
-    validset = load_dataset(dataset_dir / 'valid')
-
-    visualize_label_distribution(trainset)
-    visualize_label_distribution(validset)
-
 
 '''
 A股分布：

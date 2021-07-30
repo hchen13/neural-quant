@@ -42,12 +42,6 @@ def segment_trading_data(data: pd.DataFrame, n: int=144, t: int=6, norm=False, s
     for i in indices:
         segment = data.iloc[i : i + window_size].copy()
         if norm:
-            # anchor_price = segment['close'].iloc[0]
-            # volume_col = segment['volume']
-            # anchor_volume = volume_col[volume_col > .001].min()
-            # # anchor_volume = segment['volume'].iloc[0]
-            # segment[['open', 'close', 'high', 'low']] /= anchor_price
-            # segment['volume'] /= anchor_volume
             segment = normalize_ohlcv(segment, n)
 
         history = segment[:n]

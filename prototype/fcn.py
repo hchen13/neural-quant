@@ -25,10 +25,10 @@ def build_fcn(input_size):
 
     conv51 = Inception(f_1=64, f_2=[64, 192], f_3=[64, 192], f_out=256, reduction=True, name='conv5_1')(conv43)
     conv52 = Inception(f_1=64, f_2=[64, 192], f_3=[64, 192], f_out=256, reduction=False, name='conv5_2')(conv51)
-    conv53 = Inception(f_1=64, f_2=[64, 128], f_3=[64, 192], f_out=256, reduction=False, name='conv5_3')(conv52)
+    conv53 = Inception(f_1=64, f_2=[64, 192], f_3=[64, 192], f_out=256, reduction=False, name='conv5_3')(conv52)
 
-    conv61 = Inception(f_1=128, f_2=[64, 192], f_3=[64, 192], f_out=384, reduction=True, name='conv6_1')(conv53)
-    conv62 = Inception(f_1=128, f_2=[64, 192], f_3=[64, 192], f_out=384, reduction=False, name='conv6_2pre')(conv61)
+    conv61 = Inception(f_1=128, f_2=[128, 256], f_3=[128, 256], f_out=512, reduction=True, name='conv6_1')(conv53)
+    conv62 = Inception(f_1=128, f_2=[128, 256], f_3=[128, 256], f_out=512, reduction=False, name='conv6_2pre')(conv61)
     conv62 = BatchNormalization(
         scale=False,
         beta_initializer='glorot_uniform',

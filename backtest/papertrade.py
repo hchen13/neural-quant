@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from QUANTAXIS import QA_Performance, MARKET_TYPE, QA_User, ORDER_DIRECTION, QA_Risk
+from QUANTAXIS import QA_Performance, MARKET_TYPE, QA_User, ORDER_DIRECTION, QA_Risk, QA_fetch_cryptocurrency_day_adv
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
@@ -174,7 +174,7 @@ def inspect_report(file_name: str=None, pattern: str=None, commission_rate=1e-3,
 
 def compare_reports(pattern, commission_rate=1e-3, tax_rate=1e-3):
     target_files = sorted(BACKTEST_DIR.rglob(pattern))
-    summary_path = BACKTEST_DIR / 'summary.csv'
+    summary_path = BACKTEST_DIR / 'summary_atr.csv'
     reports = []
     for report_file in target_files:
         pnl = pd.read_csv(str(report_file))
@@ -193,10 +193,10 @@ def evaluate_risk(records_file, benchmark='BINANCE.BTCUSDT'):
     else:
         records_path = records_file
     table = pd.read_csv(str(records_path))
-    opendate = table['opendate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
-    closedate = table['closedate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
-    start_time = opendate.min()
-    end_time = closedate.max()
+    # opendate = table['opendate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
+    # closedate = table['closedate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
+    # # start_time = opendate.min()
+    # # end_time = closedate.max()
     trader = BasePaperTrader(
         init_cash=1_000_000,
         credentials=CRYPTO_TEST_CREDENTIALS,
@@ -214,10 +214,13 @@ def evaluate_risk(records_file, benchmark='BINANCE.BTCUSDT'):
         trader.buy(asset_code=symbol, price=buy_price, time=opendate, amount=amount, verbose=False)
         trader.sell(asset_code=symbol, price=sell_price, time=closedate, verbose=False)
 
-    print(start_time, end_time)
+    start_date = datetime.strptime(trader.account.start_date, "%Y-%m-%d") + timedelta(hours=8)
+    end_date = datetime.strptime(trader.account.end_date, "%Y-%m-%d") + timedelta(hours=24)
+    market_data = QA_fetch_cryptocurrency_day_adv(symbol, start=start_date, end=end_date)
     risk = QA_Risk(
         trader.account,
         benchmark_code=benchmark,
-        benchmark_type=MARKET_TYPE.CRYPTOCURRENCY
+        benchmark_type=MARKET_TYPE.CRYPTOCURRENCY,
+        market_data=market_data
     )
     return risk

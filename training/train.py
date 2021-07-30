@@ -70,16 +70,6 @@ if __name__ == '__main__':
             global_step += 1
             train_report = train_on_batch(fcn, batch_data, optimizer)
 
-            # loss = train_report['loss'].numpy()
-            # if np.isnan(loss):
-            #     history, label, _ = batch_data
-            #     y_true = tf.one_hot(label + 1, depth=3)
-            #     y_pred = fcn(history)
-            #     print(history)
-            #     l = weighted_categorical_crossentropy(y_true, y_pred, weights=configs.CLASS_WEIGHTS)
-            #     # display_batch(batch_data)
-            #     exit()
-
             if global_step % configs.LOG_STEPS == 0:
                 monitor.write_reports(train_report, global_step, prefix='train_')
                 monitor.write_weights(fcn, step=global_step)
