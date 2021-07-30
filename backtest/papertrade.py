@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from backtest.strategy import NeuralQuantStrategy
 from backtest.tools import evaluate_pnl
-from settings import OUTPUT_DIR, CRYPTO_TEST_CREDENTIALS
+from settings import CRYPTO_TEST_CREDENTIALS, BACKTEST_DIR
 from utilities.visualizations import display_trading_data
 
 
@@ -116,11 +116,11 @@ def inspect_report(file_name: str=None, pattern: str=None, commission_rate=1e-3,
 
     if file_name is not None:
         if not Path(file_name).exists():
-            file_path = OUTPUT_DIR / 'backtests' / file_name
+            file_path = BACKTEST_DIR / file_name
         else:
             file_path = file_name
     else:
-        file_path = list(OUTPUT_DIR.rglob(pattern))[0]
+        file_path = list(BACKTEST_DIR.rglob(pattern))[0]
     pnl = pd.read_csv(str(file_path))
     report = evaluate_pnl(pnl, commission_rate, tax_rate)
     for key, val in report.items():

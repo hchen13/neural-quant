@@ -14,13 +14,8 @@ MA_COLORS           = ['white', 'yellow', 'magenta', 'lightgreen', 'lightgray', 
 MARKET_OPEN_TIME    = '09:30:00'
 MARKET_CLOSE_TIME   = "15:00:00"
 
-# TUSHARE_TOKEN       = os.getenv('TOKEN')
-# QASETTING.set_config('TSPRO', 'token', TUSHARE_TOKEN)
-
 BACKTEST_DIR.mkdir(exist_ok=True, parents=True)
 WEIGHTS_DIR.mkdir(exist_ok=True, parents=True)
-
-
 
 DEFAULT_CRYPTO_MARKET   = 'BINANCE'
 

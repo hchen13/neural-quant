@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     print(f"[INFO] Creating model for training...")
     fcn = build_fcn(input_size=None)
-    # fcn.load_weights(str(settings.OUTPUT_DIR / 'fcn_crypto.h5'))
+    # fcn.load_weights(str(settings.WEIGHTS_DIR / 'fcn_crypto.h5'))
 
     print(f"[INFO] Setting up monitoring and learning algorithm...")
     experiment_name = f"FCN-crypto1h@{datetime.now().strftime('%-y%m%d-%H:%M:%S')}"
@@ -95,8 +95,7 @@ if __name__ == '__main__':
         fcn.save_weights(str(tmp_path / f"tmp.h5"))
         ''' ----- end of training ------'''
 
-    weight_file = 'fcn_crypto.h5'
-    print(f"[INFO] Training complete, saving final weights: {weight_file}")
-    save_path = settings.OUTPUT_DIR / weight_file
+    print(f"[INFO] Training complete, saving final weights: {configs.OUTPUT_WEIGHT_FILE}")
+    save_path = settings.WEIGHTS_DIR / configs.OUTPUT_WEIGHT_FILE
     fcn.save_weights(str(save_path))
     print(f"[INFO] BYE!")

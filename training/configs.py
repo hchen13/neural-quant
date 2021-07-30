@@ -12,11 +12,13 @@ else:
     BATCH_SIZE = 16
     DATASET_ROOT = Path().home() / 'datasets' / 'quant'
 
-DATASET_ROOT = DATASET_ROOT / 'crypto60min'
+DATASET_ROOT = DATASET_ROOT / 'crypto60min_ATR'
 TRAIN_DIR = DATASET_ROOT / 'train'
 VALID_DIR = DATASET_ROOT / 'valid'
 
 LEARNING_RATE = 1e-5
 LOG_STEPS = 200
 EXAM_STEPS = 1000
-CLASS_WEIGHTS = [1.1, .3, 1.1]
+CLASS_WEIGHTS = [1., .8, 1.]
+
+OUTPUT_WEIGHT_FILE = 'crypto1h_ATR'

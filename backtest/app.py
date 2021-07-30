@@ -3,7 +3,7 @@ from datetime import datetime
 from QUANTAXIS import QA_fetch_cryptocurrency_min_adv, MARKET_TYPE
 
 from backtest.papertrade import BasePaperTrader, paper_trade, inspect_report
-from settings import CRYPTO_TEST_CREDENTIALS, OUTPUT_DIR
+from settings import CRYPTO_TEST_CREDENTIALS, BACKTEST_DIR
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
     )
     pnl = paper_trade(symbol, data, trader, model_file, history_size, future_size, strategy_params=strategy_params)
 
-    save_path = OUTPUT_DIR / 'backtests' / f"{symbol}{freq}.csv"
+    save_path = BACKTEST_DIR / f"{symbol}{freq}.csv"
     print(f"储存回测记录: {str(save_path)}")
     pnl.to_csv(str(save_path))
 

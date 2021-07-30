@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from backtest.tools import BaseStrategy, Action
 from dataset_management.tools import normalize_ohlcv
 from prototype.fcn import build_fcn
-from settings import OUTPUT_DIR
+from settings import WEIGHTS_DIR
 from utilities.visualizations import draw_trading_data
 
 
@@ -37,8 +37,7 @@ class NeuralQuantStrategy(BaseStrategy):
 
     def __init__(self, weight_file, params: dict = None):
         super(NeuralQuantStrategy, self).__init__()
-        weight_dir = OUTPUT_DIR / 'weights'
-        weight_path = weight_dir / weight_file
+        weight_path = WEIGHTS_DIR / weight_file
         print(f"[NeuralQuantStrategy] Building model and loading weights from {weight_path}")
         self.model = build_fcn(None)
         self.model.load_weights(str(weight_path), by_name=True)
