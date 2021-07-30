@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from QUANTAXIS import QA_Performance, MARKET_TYPE, QA_User, ORDER_DIRECTION
+from QUANTAXIS import QA_Performance, MARKET_TYPE, QA_User, ORDER_DIRECTION, QA_Risk
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
@@ -31,15 +31,17 @@ class BasePaperTrader:
             )
         self.account = account
 
-    def __init__(self, init_cash=10_000, credentials=CRYPTO_TEST_CREDENTIALS, market_type=MARKET_TYPE.CRYPTOCURRENCY):
+    def __init__(self, init_cash=10_000, credentials=CRYPTO_TEST_CREDENTIALS, market_type=MARKET_TYPE.CRYPTOCURRENCY, commission_rate=1e-3, tax_rate=0):
         self.init_account(init_cash=init_cash, credentials=credentials, market_type=market_type)
+        self.commission_rate = commission_rate
+        self.tax_rate = tax_rate
 
-    def buy(self, asset_code, price, time, amount: float=None):
+    def buy(self, asset_code, price, time, amount: float=None, verbose=True):
         if amount is None:
             if self.account.market_type == MARKET_TYPE.STOCK_CN:
                 amount = self.account.cash_available / price // 100 * 100
             if self.account.market_type == MARKET_TYPE.CRYPTOCURRENCY:
-                amount = self.account.cash_available // price
+                amount = self.account.cash_available // (price * (1 + self.commission_rate))
 
         result = self.account.receive_simpledeal(
             code=asset_code,
@@ -48,11 +50,11 @@ class BasePaperTrader:
             trade_towards=ORDER_DIRECTION.BUY,
             trade_time=time
         )
-        if result != -1:
+        if result != -1 and verbose:
             print(f'[SIGNAL] 购入{asset_code} 单价：{price:,.2f} 数量：{amount:.4f} 余额: {self.account.cash_available:,.2f}')
         return result == 0
 
-    def sell(self, asset_code, price, time, amount: float=None):
+    def sell(self, asset_code, price, time, amount: float=None, verbose=True):
         available = self.account.hold_available.get(asset_code)
         if available is None:
             return
@@ -66,7 +68,7 @@ class BasePaperTrader:
             trade_towards=ORDER_DIRECTION.SELL,
             trade_time=time
         )
-        if result != -1:
+        if result != -1 and verbose:
             print(f'[SIGNAL] 卖出{asset_code} 单价：{price:,.2f} 数量：{amount:.4f} 余额: {self.account.cash_available:,.2f}')
         return result == 0
 
@@ -93,7 +95,7 @@ def paper_trade(symbol, data, trader, weight_file, history_size, future_size, st
         action = strategy.on_data(segment, symbol, previous_action, history_size=history_size, display=False)
         if trader.account.hold_available.get(symbol) is None:
             if action == 'BUY':
-                all_in = trader.account.cash_available // (bar.close * (1 + 1e-3)) - 1
+                all_in = trader.account.cash_available // (bar.close * (1 + trader.commission_rate))
                 success = trader.buy(asset_code=symbol, price=bar.close, amount=all_in, time=time)
                 if not success:
                     print(all_in, bar.close, trader.account.cash_available)
@@ -133,8 +135,14 @@ def inspect_report(file_name: str=None, pattern: str=None, commission_rate=1e-3,
         print(f"{key}: {val}")
     print('===\n')
 
+    risk = evaluate_risk(file_path)
+    print(f"最大回撤: {risk.max_dropback * 100:.2f}%")
+
     if not display:
         return
+
+    risk.plot_assets_curve()
+    plt.show()
 
     returns = pnl['true_ratio']
     max_return = returns.max()
@@ -162,3 +170,54 @@ def inspect_report(file_name: str=None, pattern: str=None, commission_rate=1e-3,
 
         title = f"{closedate - opendate} 收益率: {row.true_ratio * 100:.2f}%"
         display_trading_data(data, pointers=[opendate, closedate], title=title)
+
+
+def compare_reports(pattern, commission_rate=1e-3, tax_rate=1e-3):
+    target_files = sorted(BACKTEST_DIR.rglob(pattern))
+    summary_path = BACKTEST_DIR / 'summary.csv'
+    reports = []
+    for report_file in target_files:
+        pnl = pd.read_csv(str(report_file))
+        reports.append(evaluate_pnl(pnl, commission_rate, tax_rate))
+
+    indices = [p.stem for p in target_files]
+    summary = pd.DataFrame(reports, index=indices)
+    summary.T.to_csv(str(summary_path), encoding='utf-8-sig')
+
+
+def evaluate_risk(records_file, benchmark='BINANCE.BTCUSDT'):
+    if not Path(str(records_file)).exists():
+        records_path = BACKTEST_DIR / str(records_file)
+        if not records_path.exists():
+            raise FileNotFoundError(f"Trade record file {str(records_file)}")
+    else:
+        records_path = records_file
+    table = pd.read_csv(str(records_path))
+    opendate = table['opendate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
+    closedate = table['closedate'].apply(lambda s: datetime.strptime(s, "%Y-%m-%d %H:%M:%S"))
+    start_time = opendate.min()
+    end_time = closedate.max()
+    trader = BasePaperTrader(
+        init_cash=1_000_000,
+        credentials=CRYPTO_TEST_CREDENTIALS,
+        market_type=MARKET_TYPE.CRYPTOCURRENCY,
+        commission_rate=1e-3,
+        tax_rate=0
+    )
+    for index, row in table.iterrows():
+        opendate = row['opendate']
+        closedate = row['closedate']
+        symbol = row['code']
+        buy_price = row['buy_price']
+        amount = row['amount']
+        sell_price = row['sell_price']
+        trader.buy(asset_code=symbol, price=buy_price, time=opendate, amount=amount, verbose=False)
+        trader.sell(asset_code=symbol, price=sell_price, time=closedate, verbose=False)
+
+    print(start_time, end_time)
+    risk = QA_Risk(
+        trader.account,
+        benchmark_code=benchmark,
+        benchmark_type=MARKET_TYPE.CRYPTOCURRENCY
+    )
+    return risk

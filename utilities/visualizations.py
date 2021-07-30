@@ -140,7 +140,7 @@ def draw_trading_data(data:pd.DataFrame, pointers=None, title=None, figsize=(12,
             if isinstance(pt, str):
                 pt = datetime.strptime(pt, "%Y-%m-%d %H:%M:%S")
             if i > pt and last <= pt:
-                signals.append(chunk.loc[last]['low'])
+                signals.append(chunk.loc[last]['close'])
                 found = True
                 break
         if not found:
